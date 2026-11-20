@@ -79,21 +79,37 @@ install_dev() {
 
 install_remote() {
     local repo_url="https://github.com/${GITHUB_REPO}.git"
-    local tmpdir
-    tmpdir=$(mktemp -d -t tiny-install-XXXXXX)
-    log_info "Cloning ${GITHUB_REPO}@${GITHUB_BRANCH} to ${tmpdir}..."
-    if ! git clone --depth 1 --branch "${GITHUB_BRANCH}" "${repo_url}" "${tmpdir}" 2>/dev/null; then
-        log_error "Failed to clone repository. Check GITHUB_REPO/GITHUB_BRANCH in script."
-        rm -rf "${tmpdir}"
-        return 1
-    fi
-    log_info "Installing from cloned source..."
+    local git_spec="git+${repo_url}@${GITHUB_BRANCH}"
+    
+    log_info "Installing ${GITHUB_REPO}@${GITHUB_BRANCH}..."
     case "${REMOTE_MODE:-pipx}" in
-        pipx)      install_pipx "${tmpdir}" ;;
-        pip)       install_pip_user "${tmpdir}" ;;
-        dev)       install_dev "${tmpdir}" ;;
+        pipx)
+            log_info "Installing with pipx..."
+            if ! command -v pipx &>/dev/null; then
+                log_warn "pipx not found. Install it first: https://pipx.pypa.io/installation/"
+                log_warn "Falling back to pip install --user"
+                pip install --user "${git_spec}"
+            else
+                # Install directly from git URL - avoids temp dir issues
+                pipx install "${git_spec}"
+            fi
+            ;;
+        pip)
+            pip install --user "${git_spec}" ;;
+        dev)
+            # Dev mode needs local clone for editable install
+            local tmpdir
+            tmpdir=$(mktemp -d -t tiny-install-XXXXXX)
+            log_info "Cloning for dev install to ${tmpdir}..."
+            if ! git clone --depth 1 --branch "${GITHUB_BRANCH}" "${repo_url}" "${tmpdir}" 2>/dev/null; then
+                log_error "Failed to clone repository."
+                rm -rf "${tmpdir}"
+                return 1
+            fi
+            pip install -e "${tmpdir}[dev]" 2>/dev/null || pip install -e "${tmpdir}"
+            rm -rf "${tmpdir}"
+            ;;
     esac
-    rm -rf "${tmpdir}"
 }
 
 run_check() {
