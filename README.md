@@ -24,8 +24,6 @@ curl -sSL https://raw.githubusercontent.com/0xClumzzy/tiny/main/install.sh | bas
 curl -sSL https://raw.githubusercontent.com/0xClumzzy/tiny/main/install.sh | bash -s -- --pip
 ```
 
-> Replace `0xClumzzy/tiny` with your GitHub user/repository (e.g. `clumzzy/tiny-ldap`)
-
 ### Local development install
 
 ```bash
