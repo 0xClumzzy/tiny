@@ -1,0 +1,230 @@
+dn: CN=krbtgt,CN=Users,DC=corp,DC=local
+sAMAccountName: krbtgt
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+description: Key Distribution Center Service Account
+adminCount: 1
+userAccountControl: 514
+
+dn: CN=Administrator,CN=Users,DC=corp,DC=local
+sAMAccountName: Administrator
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+objectSid: S-1-5-21-1111111111-2222222222-3333333333-500
+adminCount: 1
+pwdLastSet: 134377056000000000
+lastLogon: 134377056000000000
+mail: administrator@corp.local
+memberOf: CN=Domain Admins,CN=Users,DC=corp,DC=local
+userAccountControl: 512
+
+dn: CN=Domain Admins,CN=Users,DC=corp,DC=local
+sAMAccountName: Domain Admins
+objectClass: top
+objectClass: group
+member: CN=Alice,OU=Users,DC=corp,DC=local
+member: CN=Nested Admins,OU=Groups,DC=corp,DC=local
+
+dn: CN=Enterprise Admins,CN=Users,DC=corp,DC=local
+sAMAccountName: Enterprise Admins
+objectClass: top
+objectClass: group
+member: CN=Alice,OU=Users,DC=corp,DC=local
+
+dn: CN=Nested Admins,OU=Groups,DC=corp,DC=local
+sAMAccountName: Nested Admins
+objectClass: top
+objectClass: group
+member: CN=Bob,OU=Users,DC=corp,DC=local
+member: CN=Helpdesk,OU=Groups,DC=corp,DC=local
+
+dn: CN=Helpdesk,OU=Groups,DC=corp,DC=local
+sAMAccountName: Helpdesk
+objectClass: top
+objectClass: group
+member: CN=Carol,OU=Users,DC=corp,DC=local
+
+dn: CN=Alice,OU=Users,DC=corp,DC=local
+sAMAccountName: alice
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+cn: Alice Admin
+mail: alice@corp.local
+userPrincipalName: alice@corp.local
+servicePrincipalName: MSSQLSvc/sql01.corp.local:1433
+adminCount: 1
+pwdLastSet: 134377056000000000
+lastLogon: 134377056000000000
+memberOf: CN=Domain Admins,CN=Users,DC=corp,DC=local
+userAccountControl: 512
+
+dn: CN=Bob,OU=Users,DC=corp,DC=local
+sAMAccountName: bob
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+cn: Bob Builder
+mail: bob@corp.local
+pwdLastSet: 134377056000000000
+lastLogon: 134377056000000000
+userAccountControl: 512
+
+dn: CN=Carol,OU=Users,DC=corp,DC=local
+sAMAccountName: carol
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+cn: Carol Jones
+mail: carol@corp.local
+pwdLastSet: 134377056000000000
+lastLogon: 134377056000000000
+userAccountControl: 512
+
+dn: CN=svc_sql,OU=Service Accounts,DC=corp,DC=local
+sAMAccountName: svc_sql
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+description: SQL service account
+servicePrincipalName: MSSQLSvc/sql01.corp.local:1433
+pwdLastSet: 133703136000000000
+lastLogon: 133703136000000000
+userAccountControl: 66048
+
+dn: CN=svc_backup,OU=Service Accounts,DC=corp,DC=local
+sAMAccountName: svc_backup
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+description: backup service - password: Winter2024!
+pwdLastSet: 133962336000000000
+lastLogon: 133962336000000000
+userAccountControl: 66080
+
+dn: CN=svc_legacy,OU=Service Accounts,DC=corp,DC=local
+sAMAccountName: svc_legacy
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+description: legacy reporting service - pre-auth disabled
+servicePrincipalName: HTTP/reports.corp.local
+pwdLastSet: 133703136000000000
+lastLogon: 133703136000000000
+userAccountControl: 4194816
+
+dn: CN=svc_delegate,OU=Service Accounts,DC=corp,DC=local
+sAMAccountName: svc_delegate
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+description: service with protocol transition (constrained delegation)
+servicePrincipalName: HTTP/intranet.corp.local
+msDS-AllowedToDelegateTo: HTTP/web01.corp.local
+pwdLastSet: 133703136000000000
+lastLogon: 133703136000000000
+userAccountControl: 16777728
+
+dn: CN=DC01,OU=Domain Controllers,DC=corp,DC=local
+sAMAccountName: DC01$
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+objectClass: computer
+dNSHostName: dc01.corp.local
+operatingSystem: Windows Server 2022
+userAccountControl: 532992
+pwdLastSet: 134377056000000000
+
+dn: CN=WEB01,OU=Servers,DC=corp,DC=local
+sAMAccountName: WEB01$
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+objectClass: computer
+dNSHostName: web01.corp.local
+msDS-AllowedToDelegateTo: HTTP/web01.corp.local
+pwdLastSet: 134377056000000000
+userAccountControl: 4096
+
+dn: CN=Old Contractor,OU=Users,DC=corp,DC=local
+sAMAccountName: old.contractor
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+description: temporary - password Welcome1
+pwdLastSet: 133703136000000000
+lastLogon: 133703136000000000
+userAccountControl: 514
+
+dn: CN=Backup Operators,CN=Builtin,DC=corp,DC=local
+sAMAccountName: Backup Operators
+objectClass: top
+objectClass: group
+member: CN=svc_backup,OU=Service Accounts,DC=corp,DC=local
+
+dn: OU=Users,DC=corp,DC=local
+objectClass: top
+objectClass: organizationalUnit
+
+dn: CN=Regular User,OU=Users,DC=corp,DC=local
+sAMAccountName: ruser
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: user
+mail: ruser@corp.local
+pwdLastSet: 134377056000000000
+lastLogon: 134377056000000000
+userAccountControl: 512
+
+dn: DC=corp,DC=local
+objectClass: top
+objectClass: domain
+objectClass: domainDNS
+dc: corp
+name: corp
+lockoutThreshold: 0
+lockoutDuration: -18000000000
+lockOutObservationWindow: 18000000000
+minPwdLength: 7
+maxPwdAge: 36288000000000
+pwdHistoryLength: 24
+pwdProperties: 1
+ms-DS-MachineAccountQuota: 10
+domainFunctionality: 7
+
+dn: CN=other.local,CN=System,DC=corp,DC=local
+objectClass: top
+objectClass: trustedDomain
+name: other.local
+trustPartner: other.local
+flatName: OTHER
+trustDirection: 2
+trustType: 2
+trustAttributes: 8
+
+dn: CN=UserTemplate,CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,DC=corp,DC=local
+objectClass: top
+objectClass: pKICertificateTemplate
+cn: UserTemplate
+name: UserTemplate
+displayName: UserTemplate
+msPKI-Certificate-Name-Flag: 1
+msPKI-Enrollment-Flag: 0
+pKIExtendedKeyUsage: 1.3.6.1.5.5.7.3.2
+msPKI-Template-Schema-Version: 2
