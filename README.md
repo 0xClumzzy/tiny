@@ -9,6 +9,8 @@ takeover at the top, background noise at the bottom. It also flags quick wins
 and splits the dump into per-tier and per-category files.
 
 No dependencies. Python 3.9+.
+<img width="1542" height="853" alt="image" src="https://github.com/user-attachments/assets/e1dda8a8-6be3-4d45-a747-f873cd94aa78" />\
+<img width="1524" height="923" alt="image" src="https://github.com/user-attachments/assets/41a6cd99-6c7a-4284-a01e-9509cb81910a" />
 
 ## Install
 
