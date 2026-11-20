@@ -14,7 +14,7 @@ Only the latest minor release receives security updates. Please upgrade.
 
 **Do not file public issues for security vulnerabilities.**
 
-Email: **security@tiny-ldap.example.com**
+Email: **clumzzysec@gmail.com**
 
 Include:
 - Description of the vulnerability
