@@ -12,8 +12,19 @@ PACKAGE_NAME="tiny"
 MIN_PYTHON="3.9"
 # ===================================================
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo "")"
-IS_REMOTE=0
+# Detect if running from pipe (curl | bash) vs file
+if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    # Sourced or piped - detect remote execution
+    PROJECT_DIR=""
+    IS_REMOTE=1
+elif [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo "")"
+    IS_REMOTE=0
+else
+    # Running via pipe (curl | bash) - no BASH_SOURCE
+    PROJECT_DIR=""
+    IS_REMOTE=1
+fi
 
 color_green="\033[0;32m"
 color_yellow="\033[1;33m"
@@ -142,6 +153,11 @@ main() {
         "")        mode="pipx" ;;
         *)         log_error "Unknown option: $1"; usage; exit 1 ;;
     esac
+
+    # Auto-detect remote execution (curl | bash)
+    if [[ "${IS_REMOTE}" -eq 1 && "${mode}" == "pipx" ]]; then
+        mode="remote"
+    fi
 
     check_python || exit 1
 
