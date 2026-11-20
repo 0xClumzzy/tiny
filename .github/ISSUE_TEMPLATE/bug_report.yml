@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a bug in tiny-ldap
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below.
+
+  - type: input
+    id: version
+    attributes:
+      label: tiny version
+      description: Run `tiny --version`
+      placeholder: "1.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Run `python3 --version`
+      placeholder: "3.11.5"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "Ubuntu 22.04 / Windows 11 / macOS 14"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clear and concise description of the bug
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to trigger the bug
+      placeholder: |
+        1. Run `tiny dump.ldif`
+        2. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens (error message, wrong output, etc.)
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample-ldif
+    attributes:
+      label: Sample LDIF (sanitized)
+      description: If relevant, provide a minimal LDIF that reproduces the issue. Remove real names, SIDs, passwords.
+      render: ldif
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues
+          required: true
+        - label: I have tested with the latest version
+          required: true

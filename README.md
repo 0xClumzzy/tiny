@@ -12,11 +12,39 @@ No dependencies. Python 3.9+.
 
 ## Install
 
+### Quick install (recommended)
+
 ```bash
-pipx install --editable ~/Projects/tiny
+# Via pipx (isolated, auto-updatable)
+curl -sSL https://raw.githubusercontent.com/0xClumzzy/tiny/main/install.sh | bash
+
+# Via pip (fallback if no pipx)
+curl -sSL https://raw.githubusercontent.com/0xClumzzy/tiny/main/install.sh | bash -s -- --pip
 ```
 
-Or run it without installing:
+> Replace `0xClumzzy/tiny` with your GitHub user/repository (e.g. `clumzzy/tiny-ldap`)
+
+### Local development install
+
+```bash
+# Clone first, then run the install script
+git clone https://github.com/0xClumzzy/tiny.git
+cd tiny
+./install.sh              # pipx (default)
+./install.sh --pip        # pip install --user
+./install.sh --dev        # editable dev install
+./install.sh --check      # verify installation
+```
+
+### Manual install (no script)
+clone the repo and 
+```bash
+pipx install --editable tiny/
+# or
+pip install --user -e tiny/
+```
+
+### Run without installing
 
 ```bash
 PYTHONPATH=src python3 -m tiny dump.ldif
@@ -159,4 +187,4 @@ UAC flags are parsed per MS-ADTS; hex and decimal exports are both accepted.
 `unconstrained delegation` is detected via `UF_TRUSTED_FOR_DELEGATION` (0x80000),
 AS-REP via `UF_DONT_REQ_PREAUTH` (0x400000), protocol transition via
 `UF_TRUSTED_TO_AUTH_FOR_DELEGATION` (0x1000000). Earlier releases used the
-wrong bits — these are now fixed.
+wrong bits; these are now fixed.
