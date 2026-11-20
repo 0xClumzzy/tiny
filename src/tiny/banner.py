@@ -7,19 +7,22 @@ import platform
 import re
 import shutil
 import sys
-from typing import List, Optional
 
 from . import __version__
+
 
 # ANSI colour helpers
 def _term_truecolor() -> bool:
     ct = os.environ.get("COLORTERM", "")
     return "truecolor" in ct or "24bit" in ct
 
+
 TRUE_COLOR = _term_truecolor()
+
 
 def _rgb_to_256(r: int, g: int, b: int) -> int:
     return 16 + 36 * (r * 5 // 255) + 6 * (g * 5 // 255) + (b * 5 // 255)
+
 
 def _fg_rgb(r: int, g: int, b: int) -> str:
     if not sys.stdout.isatty() or os.environ.get("NO_COLOR"):
@@ -29,11 +32,16 @@ def _fg_rgb(r: int, g: int, b: int) -> str:
     idx = _rgb_to_256(r, g, b)
     return f"\033[38;5;{idx}m"
 
+
 def _reset() -> str:
     return "\033[0m" if sys.stdout.isatty() and not os.environ.get("NO_COLOR") else ""
 
+
 def _dim(text: str) -> str:
-    return f"\033[2m{text}\033[22m" if sys.stdout.isatty() and not os.environ.get("NO_COLOR") else text
+    return (
+        f"\033[2m{text}\033[22m" if sys.stdout.isatty() and not os.environ.get("NO_COLOR") else text
+    )
+
 
 # Suzzy gradient cyan -> red -> amber
 def _grad_rgb(p: int) -> tuple[int, int, int]:
@@ -48,6 +56,7 @@ def _grad_rgb(p: int) -> tuple[int, int, int]:
         b = 59 + 12 * q // 30
     return r, g, b
 
+
 # Tiny ANSI Shadow logo — T I N Y
 LOGO = [
     "████████╗  ██╗ ██╗  ███╗   ██╗  ██╗   ██╗",
@@ -57,6 +66,7 @@ LOGO = [
     "   ██║     ███╔╝    ██║ ╚████║     ██║   ",
     "   ╚═╝     ╚══╝     ╚═╝  ╚═══╝     ╚═╝   ",
 ]
+
 
 def _logo_row(line: str) -> str:
     out = []
@@ -78,16 +88,23 @@ def _logo_row(line: str) -> str:
         out.append(f"{col}{ch}{_reset()}")
     return "".join(out)
 
+
 def _strip_ansi(s: str) -> str:
     return re.sub(r"\x1b\[[0-9;]*m", "", s)
 
-def _frame_line(content: str, inner: int, left: str = "│", right: str = "│", color: str = "") -> str:
+
+def _frame_line(
+    content: str, inner: int, left: str = "│", right: str = "│", color: str = ""
+) -> str:
     visible = len(_strip_ansi(content))
     pad = max(inner - visible, 0)
     line = f"{color}{left}{_reset()}{content}{' ' * pad}{color}{right}{_reset()}"
     return line
 
-def render_banner(domain: Optional[str], objects: int, crowns: int, color: bool = True, width: Optional[int] = None) -> List[str]:
+
+def render_banner(
+    domain: str | None, objects: int, crowns: int, color: bool = True, width: int | None = None
+) -> list[str]:
     # Quotes
     top_quote = '  "i had strings, now I\'m free"'
     bottom_quote = '  "worrying is worshipping the problem"'
@@ -129,7 +146,7 @@ def render_banner(domain: Optional[str], objects: int, crowns: int, color: bool 
     for i in range(bar_len):
         p = int(i * 100 / max(bar_len - 1, 1))
         r, g, b = _grad_rgb(p)
-        bar_chars.append(f"{_fg_rgb(r,g,b)}━{_reset()}")
+        bar_chars.append(f"{_fg_rgb(r, g, b)}━{_reset()}")
     bar = "".join(bar_chars)
 
     lines = []

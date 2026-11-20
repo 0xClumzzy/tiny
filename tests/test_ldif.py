@@ -30,14 +30,12 @@ class ParseLdifTests(unittest.TestCase):
             "description: a long description that is\n"
             "  folded across lines\n"
         )
-        self.assertEqual(entries[0].get("description"),
-                         "a long description that is folded across lines")
+        self.assertEqual(
+            entries[0].get("description"), "a long description that is folded across lines"
+        )
 
     def test_base64_value(self):
-        entries = parse_ldif(
-            "dn: CN=Alice,DC=corp,DC=local\n"
-            "cn:: QWxpY2UgQWRtaW4=\n"
-        )
+        entries = parse_ldif("dn: CN=Alice,DC=corp,DC=local\ncn:: QWxpY2UgQWRtaW4=\n")
         self.assertEqual(entries[0].get("cn"), "Alice Admin")
 
     def test_attribute_options_and_hyphens(self):
@@ -47,8 +45,7 @@ class ParseLdifTests(unittest.TestCase):
             "msDS-AllowedToDelegateTo: HTTP/web01.corp.local\n"
         )
         self.assertEqual(entries[0].all("objectguid"), ["\x01\x02\x03\x04"])
-        self.assertEqual(entries[0].all("msds-allowedtodelegateto"),
-                         ["HTTP/web01.corp.local"])
+        self.assertEqual(entries[0].all("msds-allowedtodelegateto"), ["HTTP/web01.corp.local"])
 
     def test_merge_duplicate_dns(self):
         entries = parse_ldif(

@@ -1,44 +1,42 @@
 """Command-line interface for tiny."""
 
 import argparse
+import getpass
 import glob
 import json
 import os
 import sys
-import getpass
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from . import __version__
 from .ldif import Entry, merge_entries, parse_ldif
 from .playbook import render_playbook
 from .posture import collect_posture
-from .report import (export, json_report, render_markdown, render_report,
-                     use_color)
+from .report import export, json_report, render_markdown, render_report, use_color
 from .score import score_entries
 from .windap import (
+    COMPUTER_ATTRS,
+    FILTER_ASREP,
+    FILTER_COMPUTERS,
+    FILTER_CONSTRAINED,
+    FILTER_GROUPS,
+    FILTER_RBCD,
+    FILTER_UNCONSTRAINED,
+    FILTER_USER_SPN,
+    FILTER_USERS,
+    GROUP_ATTRS,
+    USER_ATTRS,
     domain_to_base_dn,
     enumerate_query,
-    FILTER_USERS,
-    FILTER_GROUPS,
-    FILTER_COMPUTERS,
-    FILTER_USER_SPN,
-    FILTER_UNCONSTRAINED,
-    FILTER_ASREP,
-    FILTER_CONSTRAINED,
-    FILTER_RBCD,
-    USER_ATTRS,
-    COMPUTER_ATTRS,
-    GROUP_ATTRS,
 )
 
 
-def read_inputs(paths: List[str]) -> Tuple[List[Entry], List[str]]:
+def read_inputs(paths: list[str]) -> tuple[list[Entry], list[str]]:
     """Read LDIF from files/directories, or stdin when nothing was given."""
-    files: List[str] = []
+    files: list[str] = []
     for path in paths:
         if os.path.isdir(path):
-            found = sorted(glob.glob(os.path.join(path, "**", "*.ldif"),
-                                     recursive=True))
+            found = sorted(glob.glob(os.path.join(path, "**", "*.ldif"), recursive=True))
             if not found:
                 raise SystemExit(f"tiny: no .ldif files under {path}")
             files.extend(found)
@@ -47,19 +45,18 @@ def read_inputs(paths: List[str]) -> Tuple[List[Entry], List[str]]:
         else:
             raise SystemExit(f"tiny: no such file or directory: {path}")
 
-    entries: List[Entry] = []
-    sources: List[str] = []
+    entries: list[Entry] = []
+    sources: list[str] = []
     if not files:
         text = sys.stdin.read()
         if not text.strip():
-            raise SystemExit(
-                "tiny: no input (pass LDIF files, a directory, or pipe stdin)")
+            raise SystemExit("tiny: no input (pass LDIF files, a directory, or pipe stdin)")
         entries.extend(parse_ldif(text))
         sources.append("stdin")
     else:
         for path in files:
             try:
-                with open(path, "r", encoding="utf-8", errors="replace") as handle:
+                with open(path, encoding="utf-8", errors="replace") as handle:
                     entries.extend(parse_ldif(handle.read()))
             except OSError as exc:
                 raise SystemExit(f"tiny: cannot read {path}: {exc}")
@@ -70,8 +67,7 @@ def read_inputs(paths: List[str]) -> Tuple[List[Entry], List[str]]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tiny",
-        description="Rank LDAP dumps into a crown-jewel pyramid and split "
-                    "them into useful files.",
+        description="Rank LDAP dumps into a crown-jewel pyramid and split them into useful files.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
@@ -84,29 +80,42 @@ examples:
   tiny --dc-ip 10.10.10.10 --domain corp.local --unconstrained --asrep --out enum/
         """,
     )
-    parser.add_argument("inputs", nargs="*", metavar="LDIF",
-                        help="LDIF files or directories (default: stdin)")
-    parser.add_argument("-o", "--out", metavar="DIR",
-                        help="export tier/category files, report.md and tiny.json")
-    parser.add_argument("--top", type=int, default=12, metavar="N",
-                        help="priority rows to show, 0 = all (default: 12)")
-    parser.add_argument("--all", action="store_true",
-                        help="show every object in the priority queue")
-    parser.add_argument("--json", action="store_true",
-                        help="print the JSON report instead of the terminal report")
-    parser.add_argument("--md", metavar="FILE",
-                        help="also write a markdown report to FILE")
-    parser.add_argument("--playbook", metavar="FILE",
-                        help="write an environment-specific attack playbook to FILE")
-    parser.add_argument("--brief", action="store_true",
-                        help="minimize output (top 5, hide paths/quickwins/posture)")
-    parser.add_argument("--verbose", action="store_true",
-                        help="show all reasons for each queued object")
-    parser.add_argument("--full", action="store_true",
-                        help="export every attribute, not just key ones")
+    parser.add_argument(
+        "inputs", nargs="*", metavar="LDIF", help="LDIF files or directories (default: stdin)"
+    )
+    parser.add_argument(
+        "-o", "--out", metavar="DIR", help="export tier/category files, report.md and tiny.json"
+    )
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=12,
+        metavar="N",
+        help="priority rows to show, 0 = all (default: 12)",
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="show every object in the priority queue"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="print the JSON report instead of the terminal report"
+    )
+    parser.add_argument("--md", metavar="FILE", help="also write a markdown report to FILE")
+    parser.add_argument(
+        "--playbook", metavar="FILE", help="write an environment-specific attack playbook to FILE"
+    )
+    parser.add_argument(
+        "--brief", action="store_true", help="minimize output (top 5, hide paths/quickwins/posture)"
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="show all reasons for each queued object"
+    )
+    parser.add_argument(
+        "--full", action="store_true", help="export every attribute, not just key ones"
+    )
     parser.add_argument("--no-color", action="store_true", help="disable colour")
-    parser.add_argument("--quiet", action="store_true",
-                        help="suppress the terminal report (still writes files)")
+    parser.add_argument(
+        "--quiet", action="store_true", help="suppress the terminal report (still writes files)"
+    )
     parser.add_argument("--version", action="version", version=f"tiny {__version__}")
 
     # Windapsearch-style live enumeration
@@ -116,28 +125,53 @@ examples:
     parser.add_argument("--bind-dn", help="LDAP bind DN for enumeration")
     parser.add_argument("--bind-pass", help="LDAP bind password (will prompt if omitted)")
     parser.add_argument("--users", action="store_true", help="Enumerate AD Users (windapsearch -U)")
-    parser.add_argument("--groups", action="store_true", help="Enumerate AD Groups (windapsearch -G)")
-    parser.add_argument("--computers", action="store_true", help="Enumerate AD Computers (windapsearch -C)")
-    parser.add_argument("--spns", action="store_true", help="Enumerate users with SPNs (kerberoastable)")
-    parser.add_argument("--unconstrained", action="store_true", help="Enumerate unconstrained delegation accounts")
-    parser.add_argument("--asrep", action="store_true", help="Enumerate AS-REP roastable accounts (DONT_REQ_PREAUTH)")
-    parser.add_argument("--constrained", action="store_true", help="Enumerate constrained delegation candidates")
-    parser.add_argument("--rbcd", action="store_true", help="Enumerate resource-based constrained delegation")
-    parser.add_argument("--da", action="store_true", help="Enumerate members of Domain Admins (nested)")
+    parser.add_argument(
+        "--groups", action="store_true", help="Enumerate AD Groups (windapsearch -G)"
+    )
+    parser.add_argument(
+        "--computers", action="store_true", help="Enumerate AD Computers (windapsearch -C)"
+    )
+    parser.add_argument(
+        "--spns", action="store_true", help="Enumerate users with SPNs (kerberoastable)"
+    )
+    parser.add_argument(
+        "--unconstrained", action="store_true", help="Enumerate unconstrained delegation accounts"
+    )
+    parser.add_argument(
+        "--asrep",
+        action="store_true",
+        help="Enumerate AS-REP roastable accounts (DONT_REQ_PREAUTH)",
+    )
+    parser.add_argument(
+        "--constrained", action="store_true", help="Enumerate constrained delegation candidates"
+    )
+    parser.add_argument(
+        "--rbcd", action="store_true", help="Enumerate resource-based constrained delegation"
+    )
+    parser.add_argument(
+        "--da", action="store_true", help="Enumerate members of Domain Admins (nested)"
+    )
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
 
     # Helper to determine if enumeration mode is active
     enum_flags = [
-        args.users, args.groups, args.computers, args.spns,
-        args.unconstrained, args.asrep, args.constrained, args.rbcd, args.da
+        args.users,
+        args.groups,
+        args.computers,
+        args.spns,
+        args.unconstrained,
+        args.asrep,
+        args.constrained,
+        args.rbcd,
+        args.da,
     ]
     doing_enum = any(enum_flags)
-    entries: List[Entry] = []
-    sources: List[str] = []
+    entries: list[Entry] = []
+    sources: list[str] = []
 
     if doing_enum:
         if not args.dc_ip:
@@ -184,11 +218,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             queries.append((da_filter, USER_ATTRS, "da"))
 
         # Execute queries and merge results
-        all_entries: List[Entry] = []
-        all_sources: List[str] = []
+        all_entries: list[Entry] = []
+        all_sources: list[str] = []
         for ldap_filter, attrs, label in queries:
             try:
-                ldif_text = enumerate_query(args.dc_ip, bind_dn, bind_pass, base_dn, ldap_filter, attrs)
+                ldif_text = enumerate_query(
+                    args.dc_ip, bind_dn, bind_pass, base_dn, ldap_filter, attrs
+                )
                 parsed = parse_ldif(ldif_text)
                 all_entries.extend(parsed)
                 all_sources.append(f"ldap:{label}@{args.dc_ip}")
@@ -212,16 +248,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     elif not args.quiet:
         show_all = args.all or args.top <= 0
         top_n = 5 if args.brief else max(args.top, 0)
-        print(render_report(objects, sources, color,
-                            top=top_n, show_all=show_all,
-                            brief=args.brief, verbose=args.verbose))
+        print(
+            render_report(
+                objects,
+                sources,
+                color,
+                top=top_n,
+                show_all=show_all,
+                brief=args.brief,
+                verbose=args.verbose,
+            )
+        )
 
     if args.out:
         written = export(objects, args.out, sources, full=args.full)
         if not args.quiet:
             total = sum(count for _, count in written)
-            print(f"\nWrote {len(written)} files to {args.out} "
-                  f"({total} records incl. summary files)")
+            print(
+                f"\nWrote {len(written)} files to {args.out} ({total} records incl. summary files)"
+            )
     if args.md:
         with open(args.md, "w", encoding="utf-8") as handle:
             handle.write(render_markdown(objects, sources))

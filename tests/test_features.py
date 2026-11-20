@@ -65,8 +65,7 @@ class PostureTests(unittest.TestCase):
         self.assertIn("RBCD viable", rows["machine account quota"])
 
     def test_missing_domain_is_safe(self):
-        posture = collect_posture([entry("CN=Alice,DC=corp,DC=local",
-                                         objectClass="user")])
+        posture = collect_posture([entry("CN=Alice,DC=corp,DC=local", objectClass="user")])
         self.assertFalse(posture["available"])
         self.assertEqual(posture_rows(posture), [])
 
@@ -78,49 +77,68 @@ class PostureTests(unittest.TestCase):
 
 class AttackPathTests(unittest.TestCase):
     def test_nested_path_is_display_cased(self):
-        objects = score_entries([
-            entry("CN=Domain Admins,CN=Users,DC=corp,DC=local",
-                  objectClass="group", sAMAccountName="Domain Admins",
-                  member="CN=Nested Admins,OU=Groups,DC=corp,DC=local"),
-            entry("CN=Nested Admins,OU=Groups,DC=corp,DC=local",
-                  objectClass="group", sAMAccountName="Nested Admins",
-                  member="CN=Helpdesk,OU=Groups,DC=corp,DC=local"),
-            entry("CN=Helpdesk,OU=Groups,DC=corp,DC=local",
-                  objectClass="group", sAMAccountName="Helpdesk",
-                  member="CN=Carol,OU=Users,DC=corp,DC=local"),
-            entry("CN=Carol,OU=Users,DC=corp,DC=local",
-                  objectClass="user", sAMAccountName="carol",
-                  userAccountControl="512"),
-        ])
+        objects = score_entries(
+            [
+                entry(
+                    "CN=Domain Admins,CN=Users,DC=corp,DC=local",
+                    objectClass="group",
+                    sAMAccountName="Domain Admins",
+                    member="CN=Nested Admins,OU=Groups,DC=corp,DC=local",
+                ),
+                entry(
+                    "CN=Nested Admins,OU=Groups,DC=corp,DC=local",
+                    objectClass="group",
+                    sAMAccountName="Nested Admins",
+                    member="CN=Helpdesk,OU=Groups,DC=corp,DC=local",
+                ),
+                entry(
+                    "CN=Helpdesk,OU=Groups,DC=corp,DC=local",
+                    objectClass="group",
+                    sAMAccountName="Helpdesk",
+                    member="CN=Carol,OU=Users,DC=corp,DC=local",
+                ),
+                entry(
+                    "CN=Carol,OU=Users,DC=corp,DC=local",
+                    objectClass="user",
+                    sAMAccountName="carol",
+                    userAccountControl="512",
+                ),
+            ]
+        )
         paths = {chain[0]: chain for _, chain in attack_paths(objects)}
-        self.assertEqual(paths["carol"],
-                         ["carol", "Helpdesk", "Nested Admins", "Domain Admins"])
+        self.assertEqual(paths["carol"], ["carol", "Helpdesk", "Nested Admins", "Domain Admins"])
         self.assertNotIn("Helpdesk", paths)
 
 
 class AdcsTests(unittest.TestCase):
     def test_esc1_template_is_high_value(self):
-        objects = score_entries([entry(
-            "CN=UserTemplate,CN=Certificate Templates,DC=corp,DC=local",
-            objectClass=["top", "pKICertificateTemplate"],
-            cn="UserTemplate",
-            **{"msPKI-Certificate-Name-Flag": "1",
-               "msPKI-Enrollment-Flag": "0"},
-            pKIExtendedKeyUsage="1.3.6.1.5.5.7.3.2",
-        )])
+        objects = score_entries(
+            [
+                entry(
+                    "CN=UserTemplate,CN=Certificate Templates,DC=corp,DC=local",
+                    objectClass=["top", "pKICertificateTemplate"],
+                    cn="UserTemplate",
+                    **{"msPKI-Certificate-Name-Flag": "1", "msPKI-Enrollment-Flag": "0"},
+                    pKIExtendedKeyUsage="1.3.6.1.5.5.7.3.2",
+                )
+            ]
+        )
         obj = objects[0]
         self.assertIn("adcs-esc1", obj.tags)
         self.assertEqual(obj.tier, 1)
 
     def test_pending_approval_suppresses_esc1(self):
-        objects = score_entries([entry(
-            "CN=SafeTemplate,CN=Certificate Templates,DC=corp,DC=local",
-            objectClass=["top", "pKICertificateTemplate"],
-            cn="SafeTemplate",
-            **{"msPKI-Certificate-Name-Flag": "1",
-               "msPKI-Enrollment-Flag": "2"},
-            pKIExtendedKeyUsage="1.3.6.1.5.5.7.3.2",
-        )])
+        objects = score_entries(
+            [
+                entry(
+                    "CN=SafeTemplate,CN=Certificate Templates,DC=corp,DC=local",
+                    objectClass=["top", "pKICertificateTemplate"],
+                    cn="SafeTemplate",
+                    **{"msPKI-Certificate-Name-Flag": "1", "msPKI-Enrollment-Flag": "2"},
+                    pKIExtendedKeyUsage="1.3.6.1.5.5.7.3.2",
+                )
+            ]
+        )
         self.assertNotIn("adcs-esc1", objects[0].tags)
 
 
@@ -128,10 +146,16 @@ class DelegationAndPreAuthTests(unittest.TestCase):
     """userAccountControl bit checks — the bits are easy to get wrong."""
 
     def _obj(self, **attrs):
-        objects = score_entries([entry("CN=target,DC=corp,DC=local",
-                                       objectClass="user",
-                                       sAMAccountName="target",
-                                       **attrs)])
+        objects = score_entries(
+            [
+                entry(
+                    "CN=target,DC=corp,DC=local",
+                    objectClass="user",
+                    sAMAccountName="target",
+                    **attrs,
+                )
+            ]
+        )
         return objects[0]
 
     def test_unconstrained_delegation_flag(self):
@@ -157,15 +181,17 @@ class DelegationAndPreAuthTests(unittest.TestCase):
         self.assertIn("protocol-transition", obj.tags)
 
     def test_constrained_delegation_full_flag(self):
-        obj = self._obj(userAccountControl=str(0x200 | 0x1000000),
-                        **{"msDS-AllowedToDelegateTo": "HTTP/web01.corp.local"})
+        obj = self._obj(
+            userAccountControl=str(0x200 | 0x1000000),
+            **{"msDS-AllowedToDelegateTo": "HTTP/web01.corp.local"},
+        )
         self.assertIn("constrained", obj.tags)
-        self.assertIn("TRUSTED_TO_AUTH_FOR_DELEGATION",
-                      " ".join(obj.reasons))
+        self.assertIn("TRUSTED_TO_AUTH_FOR_DELEGATION", " ".join(obj.reasons))
 
     def test_allowed_to_delegate_without_flag_is_candidate(self):
-        obj = self._obj(userAccountControl="512",
-                        **{"msDS-AllowedToDelegateTo": "HTTP/web01.corp.local"})
+        obj = self._obj(
+            userAccountControl="512", **{"msDS-AllowedToDelegateTo": "HTTP/web01.corp.local"}
+        )
         self.assertIn("constrained", obj.tags)
         self.assertIn("verify", " ".join(obj.reasons).lower())
 
@@ -175,6 +201,7 @@ class DelegationAndPreAuthTests(unittest.TestCase):
 
     def test_uac_flag_names(self):
         from tiny.score import uac_flags
+
         names = uac_flags(0x200 | 0x400000)
         self.assertIn("DONT_REQ_PREAUTH", names)
         self.assertIn("NORMAL_ACCOUNT", names)
@@ -184,17 +211,32 @@ class PlaybookTests(unittest.TestCase):
     def test_playbook_sections(self):
         entries = [
             domain_entry(),
-            entry("CN=Alice,DC=corp,DC=local", objectClass="user",
-                  sAMAccountName="alice", userAccountControl="512",
-                  servicePrincipalName="MSSQLSvc/sql01.corp.local:1433"),
-            entry("CN=noauth,DC=corp,DC=local", objectClass="user",
-                  sAMAccountName="noauth",
-                  userAccountControl=str(0x200 | 0x400000)),
-            entry("CN=DC01,DC=corp,DC=local", objectClass="computer",
-                  sAMAccountName="DC01$", userAccountControl=str(0x2000 | 0x80000)),
-            entry("CN=svc_sql,DC=corp,DC=local", objectClass="user",
-                  sAMAccountName="svc_sql", userAccountControl="512",
-                  description="password: Winter2024!"),
+            entry(
+                "CN=Alice,DC=corp,DC=local",
+                objectClass="user",
+                sAMAccountName="alice",
+                userAccountControl="512",
+                servicePrincipalName="MSSQLSvc/sql01.corp.local:1433",
+            ),
+            entry(
+                "CN=noauth,DC=corp,DC=local",
+                objectClass="user",
+                sAMAccountName="noauth",
+                userAccountControl=str(0x200 | 0x400000),
+            ),
+            entry(
+                "CN=DC01,DC=corp,DC=local",
+                objectClass="computer",
+                sAMAccountName="DC01$",
+                userAccountControl=str(0x2000 | 0x80000),
+            ),
+            entry(
+                "CN=svc_sql,DC=corp,DC=local",
+                objectClass="user",
+                sAMAccountName="svc_sql",
+                userAccountControl="512",
+                description="password: Winter2024!",
+            ),
         ]
         objects = score_entries(entries)
         posture = collect_posture(entries)
@@ -208,9 +250,16 @@ class PlaybookTests(unittest.TestCase):
         self.assertIn("nxc smb <DC_IP>", text)
 
     def test_password_hints(self):
-        objects = score_entries([entry(
-            "CN=svc_sql,DC=corp,DC=local", objectClass="user",
-            sAMAccountName="svc_sql", description="password: Winter2024!")])
+        objects = score_entries(
+            [
+                entry(
+                    "CN=svc_sql,DC=corp,DC=local",
+                    objectClass="user",
+                    sAMAccountName="svc_sql",
+                    description="password: Winter2024!",
+                )
+            ]
+        )
         hints = password_hints(objects)
         self.assertEqual(hints[0]["candidate"], "Winter2024!")
 

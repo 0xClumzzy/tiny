@@ -2,8 +2,9 @@
 
 import base64
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional
+from typing import Optional
 
 
 @dataclass
@@ -11,23 +12,23 @@ class Entry:
     """A single LDAP object."""
 
     dn: str
-    attrs: Dict[str, List[str]] = field(default_factory=dict)
+    attrs: dict[str, list[str]] = field(default_factory=dict)
 
     def get(self, name: str, default: Optional[str] = None) -> Optional[str]:
         values = self.attrs.get(name.lower())
         return values[0] if values else default
 
-    def all(self, name: str) -> List[str]:
+    def all(self, name: str) -> list[str]:
         return self.attrs.get(name.lower(), [])
 
 
-def parse_ldif(text: str) -> List[Entry]:
+def parse_ldif(text: str) -> list[Entry]:
     """Parse LDIF text into entries.
 
     Handles line folding, base64 values and attribute options such as
     ``objectGUID;binary::``. Comments and blank lines are ignored.
     """
-    entries: List[Entry] = []
+    entries: list[Entry] = []
     current: Optional[Entry] = None
     last_attr: Optional[str] = None
 
@@ -79,15 +80,14 @@ def parse_ldif(text: str) -> List[Entry]:
     return entries
 
 
-def merge_entries(entries: Iterable[Entry]) -> List[Entry]:
+def merge_entries(entries: Iterable[Entry]) -> list[Entry]:
     """Merge duplicate DNs, useful when several dump files overlap."""
-    merged: Dict[str, Entry] = {}
-    order: List[str] = []
+    merged: dict[str, Entry] = {}
+    order: list[str] = []
     for entry in entries:
         key = entry.dn.strip().lower()
         if key not in merged:
-            merged[key] = Entry(dn=entry.dn,
-                                attrs={k: list(v) for k, v in entry.attrs.items()})
+            merged[key] = Entry(dn=entry.dn, attrs={k: list(v) for k, v in entry.attrs.items()})
             order.append(key)
             continue
         target = merged[key]

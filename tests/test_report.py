@@ -15,20 +15,25 @@ from tiny.score import score_entries
 
 def make_objects():
     entries = [
-        Entry("CN=krbtgt,DC=corp,DC=local", {
-            "objectclass": ["user"], "samaccountname": ["krbtgt"]}),
-        Entry("CN=Alice,DC=corp,DC=local", {
-            "objectclass": ["user"], "samaccountname": ["alice"],
-            "useraccountcontrol": ["512"],
-            "serviceprincipalname": ["MSSQLSvc/sql01.corp.local:1433"]}),
+        Entry(
+            "CN=krbtgt,DC=corp,DC=local", {"objectclass": ["user"], "samaccountname": ["krbtgt"]}
+        ),
+        Entry(
+            "CN=Alice,DC=corp,DC=local",
+            {
+                "objectclass": ["user"],
+                "samaccountname": ["alice"],
+                "useraccountcontrol": ["512"],
+                "serviceprincipalname": ["MSSQLSvc/sql01.corp.local:1433"],
+            },
+        ),
     ]
     return score_entries(entries)
 
 
 class ReportTests(unittest.TestCase):
     def test_terminal_report(self):
-        report = render_report(make_objects(), ["dump.ldif"], color=False,
-                               top=10, show_all=False)
+        report = render_report(make_objects(), ["dump.ldif"], color=False, top=10, show_all=False)
         self.assertIn("TINY", report)
         self.assertIn("LDAP", report)
         self.assertIn("CROWN JEWELS", report)

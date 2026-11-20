@@ -1,7 +1,7 @@
 """Domain posture: password policy, lockout, machine quota, trusts."""
 
 import re
-from typing import Dict, List, Optional
+from typing import Optional
 
 from .ldif import Entry
 from .score import get_int
@@ -57,7 +57,7 @@ def format_timespan(value: Optional[int]) -> Optional[str]:
     return _format_seconds(value / TICKS_PER_SECOND)
 
 
-def guess_domain(entries: List[Entry]) -> Optional[str]:
+def guess_domain(entries: list[Entry]) -> Optional[str]:
     for entry in entries:
         parts = re.findall(r"(?:^|,)\s*DC=([^,]+)", entry.dn, re.IGNORECASE)
         if parts:
@@ -65,20 +65,18 @@ def guess_domain(entries: List[Entry]) -> Optional[str]:
     return None
 
 
-def _describe_trust(entry: Entry) -> Dict[str, object]:
+def _describe_trust(entry: Entry) -> dict[str, object]:
     attrs = get_int(entry, "trustattributes") or 0
     return {
         "partner": entry.get("trustpartner") or entry.get("name") or "",
         "flat_name": entry.get("flatname") or "",
-        "direction": TRUST_DIRECTIONS.get(get_int(entry, "trustdirection") or 0,
-                                          "unknown"),
+        "direction": TRUST_DIRECTIONS.get(get_int(entry, "trustdirection") or 0, "unknown"),
         "type": TRUST_TYPES.get(get_int(entry, "trusttype") or 0, "unknown"),
-        "attributes": [label for bit, label in TRUST_ATTRIBUTES.items()
-                       if attrs & bit],
+        "attributes": [label for bit, label in TRUST_ATTRIBUTES.items() if attrs & bit],
     }
 
 
-def collect_posture(entries: List[Entry]) -> Dict[str, object]:
+def collect_posture(entries: list[Entry]) -> dict[str, object]:
     """Extract domain password/lockout policy, quota and trusts."""
     domain_entry = None
     for entry in entries:
@@ -87,7 +85,7 @@ def collect_posture(entries: List[Entry]) -> Dict[str, object]:
             domain_entry = entry
             break
 
-    posture: Dict[str, object] = {
+    posture: dict[str, object] = {
         "domain": guess_domain(entries),
         "available": False,
         "machine_account_quota": None,
@@ -99,8 +97,11 @@ def collect_posture(entries: List[Entry]) -> Dict[str, object]:
         "password_history": None,
         "complexity": None,
         "functional_level": None,
-        "trusts": [_describe_trust(e) for e in entries
-                   if "trusteddomain" in {oc.lower() for oc in e.all("objectclass")}],
+        "trusts": [
+            _describe_trust(e)
+            for e in entries
+            if "trusteddomain" in {oc.lower() for oc in e.all("objectclass")}
+        ],
     }
     if domain_entry is None:
         return posture
@@ -110,34 +111,44 @@ def collect_posture(entries: List[Entry]) -> Dict[str, object]:
     properties = get_int(domain_entry, "pwdproperties") or 0
     level = get_int(domain_entry, "domainfunctionality")
 
-    posture.update({
-        "available": True,
-        "machine_account_quota": get_int(domain_entry, "ms-ds-machineaccountquota"),
-        "lockout_threshold": threshold,
-        "lockout_duration": format_timespan(get_int(domain_entry, "lockoutduration")),
-        "lockout_window": format_timespan(
-            get_int(domain_entry, "lockoutobservationwindow")),
-        "min_password_length": get_int(domain_entry, "minpwdlength"),
-        "max_password_age": format_timespan(max_age),
-        "password_history": get_int(domain_entry, "pwdhistorylength"),
-        "complexity": bool(properties & 0x1) if properties is not None else None,
-        "functional_level": FUNCTIONAL_LEVELS.get(level, str(level)) if level is not None else None,
-    })
+    posture.update(
+        {
+            "available": True,
+            "machine_account_quota": get_int(domain_entry, "ms-ds-machineaccountquota"),
+            "lockout_threshold": threshold,
+            "lockout_duration": format_timespan(get_int(domain_entry, "lockoutduration")),
+            "lockout_window": format_timespan(get_int(domain_entry, "lockoutobservationwindow")),
+            "min_password_length": get_int(domain_entry, "minpwdlength"),
+            "max_password_age": format_timespan(max_age),
+            "password_history": get_int(domain_entry, "pwdhistorylength"),
+            "complexity": bool(properties & 0x1) if properties is not None else None,
+            "functional_level": FUNCTIONAL_LEVELS.get(level, str(level))
+            if level is not None
+            else None,
+        }
+    )
     return posture
 
 
-def posture_rows(posture: Dict[str, object]) -> List[tuple]:
+def posture_rows(posture: dict[str, object]) -> list[tuple]:
     """(label, value) rows for display, omitting missing values."""
     rows = []
     quota = posture.get("machine_account_quota")
     if quota is not None:
-        rows.append(("machine account quota",
-                     f"{quota} (RBCD viable)" if quota else "0 (no machine accounts)"))
+        rows.append(
+            (
+                "machine account quota",
+                f"{quota} (RBCD viable)" if quota else "0 (no machine accounts)",
+            )
+        )
     threshold = posture.get("lockout_threshold")
     if threshold is not None:
-        rows.append(("lockout threshold",
-                     "0 (never — spraying safe)" if threshold == 0
-                     else f"{threshold} attempts"))
+        rows.append(
+            (
+                "lockout threshold",
+                "0 (never — spraying safe)" if threshold == 0 else f"{threshold} attempts",
+            )
+        )
     if posture.get("lockout_duration"):
         rows.append(("lockout duration", posture["lockout_duration"]))
     if posture.get("lockout_window"):

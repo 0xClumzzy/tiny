@@ -5,28 +5,28 @@ import re
 import struct
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import Optional
 
 from .ldif import Entry
 
 # group name (lowercase) -> (tier, weight, display name)
 PRIVILEGED_GROUPS = {
-    "domain admins":                (0, 90, "Domain Admins"),
-    "enterprise admins":            (0, 92, "Enterprise Admins"),
-    "schema admins":                (0, 88, "Schema Admins"),
-    "administrators":               (0, 90, "Administrators"),
+    "domain admins": (0, 90, "Domain Admins"),
+    "enterprise admins": (0, 92, "Enterprise Admins"),
+    "schema admins": (0, 88, "Schema Admins"),
+    "administrators": (0, 90, "Administrators"),
     "exchange windows permissions": (0, 85, "Exchange Windows Permissions (WriteDACL → DCSync)"),
-    "account operators":            (1, 55, "Account Operators"),
-    "server operators":             (1, 55, "Server Operators"),
-    "backup operators":             (1, 55, "Backup Operators"),
-    "print operators":              (1, 50, "Print Operators"),
-    "dnsadmins":                    (1, 60, "DnsAdmins (DLL injection into DNS service)"),
-    "group policy creator owners":  (1, 50, "Group Policy Creator Owners"),
-    "key admins":                   (1, 50, "Key Admins"),
-    "enterprise key admins":        (1, 55, "Enterprise Key Admins"),
-    "exchange trusted subsystem":   (1, 50, "Exchange Trusted Subsystem"),
-    "remote desktop users":         (2, 30, "Remote Desktop Users"),
-    "remote management users":      (2, 25, "Remote Management Users"),
+    "account operators": (1, 55, "Account Operators"),
+    "server operators": (1, 55, "Server Operators"),
+    "backup operators": (1, 55, "Backup Operators"),
+    "print operators": (1, 50, "Print Operators"),
+    "dnsadmins": (1, 60, "DnsAdmins (DLL injection into DNS service)"),
+    "group policy creator owners": (1, 50, "Group Policy Creator Owners"),
+    "key admins": (1, 50, "Key Admins"),
+    "enterprise key admins": (1, 55, "Enterprise Key Admins"),
+    "exchange trusted subsystem": (1, 50, "Exchange Trusted Subsystem"),
+    "remote desktop users": (2, 30, "Remote Desktop Users"),
+    "remote management users": (2, 25, "Remote Management Users"),
 }
 
 PRIVILEGED_RIDS = {
@@ -113,7 +113,7 @@ class Membership:
     tier: int
     score: int
     direct: bool
-    path: List[str] = field(default_factory=list)
+    path: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -125,9 +125,9 @@ class Obj:
     name: str
     score: int
     tier: int
-    reasons: List[str] = field(default_factory=list)
-    tags: Set[str] = field(default_factory=set)
-    memberships: List[Membership] = field(default_factory=list)
+    reasons: list[str] = field(default_factory=list)
+    tags: set[str] = field(default_factory=set)
+    memberships: list[Membership] = field(default_factory=list)
 
 
 def norm_dn(dn: str) -> str:
@@ -155,10 +155,10 @@ def get_kind(entry: Entry) -> str:
         return "group"
     if entry.get("useraccountcontrol") is not None or entry.all("serviceprincipalname"):
         return "user"
-    if entry.get("msds-allowedtoactonbehalfofotheridentity") or entry.all("msds-allowedtodelegateto"):
-        # could be computer or user; prefer computer if looks like machine
-        if sam.endswith("$"):
-            return "computer"
+    if (entry.get("msds-allowedtoactonbehalfofotheridentity") or entry.all(
+        "msds-allowedtodelegateto"
+    )) and sam.endswith("$"):
+        return "computer"
     dn_lower = (entry.dn or "").lower()
     if "ou=domain controllers" in dn_lower or "cn=domain controllers" in dn_lower:
         return "computer"
@@ -166,8 +166,7 @@ def get_kind(entry: Entry) -> str:
 
 
 def display_name(entry: Entry) -> str:
-    return (entry.get("samaccountname") or entry.get("cn")
-            or entry.get("name") or entry.dn)
+    return entry.get("samaccountname") or entry.get("cn") or entry.get("name") or entry.dn
 
 
 def get_uac(entry: Entry) -> Optional[int]:
@@ -214,12 +213,12 @@ def get_rid(entry: Entry) -> Optional[int]:
         if len(sid) < 8 + 4 * sub_auth_count:
             return None
         rid_offset = 8 + 4 * (sub_auth_count - 1)
-        return struct.unpack("<I", sid[rid_offset:rid_offset + 4])[0]
+        return struct.unpack("<I", sid[rid_offset : rid_offset + 4])[0]
     except Exception:
         return None
 
 
-def uac_flags(value: Optional[int]) -> List[str]:
+def uac_flags(value: Optional[int]) -> list[str]:
     if value is None:
         return []
     return [name for bit, name in UAC_FLAGS.items() if value & bit]
@@ -233,50 +232,52 @@ def filetime_age_days(value: Optional[str]) -> Optional[int]:
         return None
     if filetime <= 0 or filetime < 116444736000000000:
         return None
-    created = datetime.datetime(1601, 1, 1) + datetime.timedelta(
-        microseconds=filetime // 10)
+    created = datetime.datetime(1601, 1, 1) + datetime.timedelta(microseconds=filetime // 10)
     now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     return (now - created).days
 
 
-def build_memberships(entries: List[Entry]) -> Dict[str, List[Membership]]:
+def build_memberships(entries: list[Entry]) -> dict[str, list[Membership]]:
     """Resolve direct and nested membership in privileged groups."""
-    children: Dict[str, List[str]] = {}
-    labels: Dict[str, str] = {}
-    privileged: Dict[str, List[str]] = {}
+    children: dict[str, list[str]] = {}
+    labels: dict[str, str] = {}
+    privileged: dict[str, list[str]] = {}
 
     for entry in entries:
         if get_kind(entry) != "group":
             continue
         gdn = norm_dn(entry.dn)
-        label = (entry.get("samaccountname") or entry.get("cn")
-                 or entry.get("name") or "").lower()
-        labels[gdn] = (entry.get("cn") or entry.get("name")
-                       or entry.get("samaccountname") or label)
+        label = (entry.get("samaccountname") or entry.get("cn") or entry.get("name") or "").lower()
+        labels[gdn] = entry.get("cn") or entry.get("name") or entry.get("samaccountname") or label
         members = [norm_dn(m) for m in entry.all("member") + entry.all("uniquemember")]
         if members:
             children[gdn] = members
         if label in PRIVILEGED_GROUPS:
             privileged.setdefault(label, []).append(gdn)
 
-    memberships: Dict[str, List[Membership]] = {}
+    memberships: dict[str, list[Membership]] = {}
     for label, dns in privileged.items():
         tier, weight, pretty = PRIVILEGED_GROUPS[label]
         for gdn in dns:
             direct = set(children.get(gdn, []))
             seen = {gdn}
             queue = deque((member, []) for member in direct)
-            found: Dict[str, Membership] = {}
+            found: dict[str, Membership] = {}
             while queue:
                 member, path = queue.popleft()
                 if member in seen:
                     continue
                 seen.add(member)
-                found.setdefault(member, Membership(
-                    group=pretty, tier=tier, score=weight,
-                    direct=member in direct,
-                    path=[labels.get(p, p) for p in path],
-                ))
+                found.setdefault(
+                    member,
+                    Membership(
+                        group=pretty,
+                        tier=tier,
+                        score=weight,
+                        direct=member in direct,
+                        path=[labels.get(p, p) for p in path],
+                    ),
+                )
                 for child in children.get(member, []):
                     queue.append((child, path + [member]))
             for member, info in found.items():
@@ -289,17 +290,17 @@ def build_memberships(entries: List[Entry]) -> Dict[str, List[Membership]]:
     return memberships
 
 
-def score_entries(entries: List[Entry]) -> List[Obj]:
+def score_entries(entries: list[Entry]) -> list[Obj]:
     """Score every entry and assign it to a pyramid tier."""
     memberships = build_memberships(entries)
-    objects: List[Obj] = []
+    objects: list[Obj] = []
 
     for entry in entries:
         kind = get_kind(entry)
         name = display_name(entry)
         score = BASE_SCORES.get(kind, 3)
-        reasons: List[str] = []
-        tags: Set[str] = set()
+        reasons: list[str] = []
+        tags: set[str] = set()
         uac = get_uac(entry)
         sam = (entry.get("samaccountname") or "").lower()
         label = sam or (entry.get("cn") or "").lower()
@@ -326,14 +327,16 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
 
         # Privileged group membership (direct / nested)
         member_of = memberships.get(norm_dn(entry.dn), [])
-        found_memberships: List[Membership] = list(member_of)
+        found_memberships: list[Membership] = list(member_of)
         if member_of:
             best = member_of[0]
-            add(best.score if best.direct else max(best.score - 10, 20),
+            add(
+                best.score if best.direct else max(best.score - 10, 20),
                 f"member of {best.group}"
                 f"{' (direct)' if best.direct else ' (nested)'}"
                 + (f" via {' → '.join(best.path)}" if best.path else ""),
-                "privileged")
+                "privileged",
+            )
             for extra in member_of[1:3]:
                 reasons.append(f"also member of {extra.group}")
             if best.tier == 0:
@@ -353,7 +356,8 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
                 continue
             add(gweight, f"memberOf {gpretty}", "privileged")
             found_memberships.append(
-                Membership(group=gpretty, tier=gtier, score=gweight, direct=True))
+                Membership(group=gpretty, tier=gtier, score=gweight, direct=True)
+            )
             if gtier == 0:
                 tags.add("crown")
             seen_groups.add(gpretty)
@@ -380,8 +384,7 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
                 reasons.append(f"cleartext password attribute ({attr})")
                 tags.update({"creds", "cleartext"})
                 break
-        secrets = " ".join(entry.all("description") + entry.all("info")
-                           + entry.all("comment"))
+        secrets = " ".join(entry.all("description") + entry.all("info") + entry.all("comment"))
         if secrets and SECRET_RE.search(secrets):
             add(50, "credential-like text in description/comment", "creds")
         if entry.all("msds-keycredentiallink"):
@@ -391,57 +394,68 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
 
         # Delegation
         if uac is not None and uac & UF_TRUSTED_FOR_DELEGATION:
-            add(80 if kind == "computer" else 75,
+            add(
+                80 if kind == "computer" else 75,
                 "unconstrained delegation (TRUSTED_FOR_DELEGATION) — "
                 "coerce a DC and capture its TGT",
-                "unconstrained", "delegation", "crown")
+                "unconstrained",
+                "delegation",
+                "crown",
+            )
         if entry.all("msds-allowedtodelegateto"):
             targets = ", ".join(entry.all("msds-allowedtodelegateto")[:3])
             if uac is not None and uac & UF_TRUSTED_TO_AUTH_FOR_DELEGATION:
-                add(50, "constrained delegation to: " + targets,
-                    "constrained", "delegation")
+                add(50, "constrained delegation to: " + targets, "constrained", "delegation")
             else:
-                add(40, "msDS-AllowedToDelegateTo present (candidate "
-                    "constrained delegation): " + targets
+                add(
+                    40,
+                    "msDS-AllowedToDelegateTo present (candidate "
+                    "constrained delegation): "
+                    + targets
                     + " — verify TRUSTED_TO_AUTH_FOR_DELEGATION",
-                    "constrained", "delegation")
+                    "constrained",
+                    "delegation",
+                )
         if uac is not None and uac & UF_TRUSTED_TO_AUTH_FOR_DELEGATION:
-            add(10, "protocol transition enabled (TRUSTED_TO_AUTH_FOR_DELEGATION)",
-                "protocol-transition", "delegation")
+            add(
+                10,
+                "protocol transition enabled (TRUSTED_TO_AUTH_FOR_DELEGATION)",
+                "protocol-transition",
+                "delegation",
+            )
 
         # AD CS certificate templates
-        if ("pkicertificatetemplate" in ocs
-                or entry.get("mspki-certificate-name-flag") is not None):
+        if "pkicertificatetemplate" in ocs or entry.get("mspki-certificate-name-flag") is not None:
             name_flag = get_int(entry, "mspki-certificate-name-flag") or 0
             enroll_flag = get_int(entry, "mspki-enrollment-flag") or 0
-            ekus = {eku.lower() for eku in
-                    entry.all("pkiextendedkeyusage")
-                    + entry.all("mspki-certificate-application-policy")}
-            client_auth = bool(ekus & {"1.3.6.1.5.5.7.3.2",
-                                       "1.3.6.1.4.1.311.20.2.2"})
+            ekus = {
+                eku.lower()
+                for eku in entry.all("pkiextendedkeyusage")
+                + entry.all("mspki-certificate-application-policy")
+            }
+            client_auth = bool(ekus & {"1.3.6.1.5.5.7.3.2", "1.3.6.1.4.1.311.20.2.2"})
             any_eku = "2.5.29.37.0" in ekus
             supplies_subject = bool(name_flag & 0x1)
             needs_approval = bool(enroll_flag & 0x2)
             tags.add("adcs")
             if supplies_subject and (client_auth or any_eku) and not needs_approval:
-                add(70, "ADCS ESC1 candidate: enrollee-supplied subject + client-auth EKU",
-                    "adcs-esc1")
+                add(
+                    70,
+                    "ADCS ESC1 candidate: enrollee-supplied subject + client-auth EKU",
+                    "adcs-esc1",
+                )
             elif any_eku and not needs_approval:
                 add(55, "ADCS ESC2 candidate: any-purpose EKU", "adcs-esc2")
             if "1.3.6.1.4.1.311.20.2.1" in ekus:
-                add(40, "ADCS ESC3 candidate: certificate request agent EKU",
-                    "adcs-esc3")
+                add(40, "ADCS ESC3 candidate: certificate request agent EKU", "adcs-esc3")
             if enroll_flag & 0x10000 and (client_auth or any_eku):
-                add(35, "ADCS ESC9 candidate: no security extension + client auth",
-                    "adcs-esc9")
+                add(35, "ADCS ESC9 candidate: no security extension + client auth", "adcs-esc9")
 
         # Roasting and credential primitives
         if uac is not None and uac & UF_DONT_REQ_PREAUTH and kind == "user":
-            add(55, "AS-REP roastable (DONT_REQ_PREAUTH — pre-auth disabled)",
-                "asrep")
+            add(55, "AS-REP roastable (DONT_REQ_PREAUTH — pre-auth disabled)", "asrep")
         if spns and kind == "user" and sam != "krbtgt":
-            add(45, "Kerberoastable SPN: " + ", ".join(spns[:3]),
-                "kerberoastable", "service")
+            add(45, "Kerberoastable SPN: " + ", ".join(spns[:3]), "kerberoastable", "service")
         if entry.all("sidhistory"):
             add(55, "SID history present (privilege injection / persistence)", "sidhistory")
         if (entry.get("pwdlastset") or "") == "0" and kind == "user":
@@ -468,8 +482,7 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
 
         # Domain controllers and servers
         dn_lower = entry.dn.lower()
-        is_dc = ("ou=domain controllers" in dn_lower
-                 or entry.get("primarygroupid") == "516")
+        is_dc = "ou=domain controllers" in dn_lower or entry.get("primarygroupid") == "516"
         if kind == "computer" and is_dc:
             add(55, "Domain Controller", "dc", "privileged")
         elif kind == "computer" and "ou=servers" in dn_lower:
@@ -481,8 +494,7 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
         pwd_age = filetime_age_days(entry.get("pwdlastset"))
         if pwd_age is not None and pwd_age > 365:
             add(-10, f"password unchanged for {pwd_age} days", "stale")
-        logon_age = filetime_age_days(entry.get("lastlogon")
-                                      or entry.get("lastlogontimestamp"))
+        logon_age = filetime_age_days(entry.get("lastlogon") or entry.get("lastlogontimestamp"))
         if logon_age is not None and logon_age > 180:
             add(-8, f"no logon for {logon_age} days", "stale")
 
@@ -493,9 +505,18 @@ def score_entries(entries: List[Entry]) -> List[Obj]:
         if not reasons:
             reasons.append("no escalation signals")
 
-        objects.append(Obj(entry=entry, kind=kind, name=name, score=score,
-                           tier=tier, reasons=reasons, tags=tags,
-                           memberships=found_memberships))
+        objects.append(
+            Obj(
+                entry=entry,
+                kind=kind,
+                name=name,
+                score=score,
+                tier=tier,
+                reasons=reasons,
+                tags=tags,
+                memberships=found_memberships,
+            )
+        )
 
     objects.sort(key=lambda o: (-o.score, o.kind, o.name.lower()))
     return objects

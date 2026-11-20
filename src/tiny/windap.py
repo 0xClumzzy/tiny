@@ -6,26 +6,48 @@ results into the existing scoring pipeline.
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 # Default attributes used by windapsearch for each enumeration type.
 USER_ATTRS = [
-    "cn", "name", "samAccountName", "userPrincipalName",
-    "description", "userAccountControl", "pwdLastSet", "lastLogon",
-    "lastLogonTimestamp", "servicePrincipalName",
-    "msDS-AllowedToDelegateTo", "msDS-AllowedToActOnBehalfOfOtherIdentity",
-    "objectSid", "sIDHistory", "adminCount", "memberOf", "objectClass",
+    "cn",
+    "name",
+    "samAccountName",
+    "userPrincipalName",
+    "description",
+    "userAccountControl",
+    "pwdLastSet",
+    "lastLogon",
+    "lastLogonTimestamp",
+    "servicePrincipalName",
+    "msDS-AllowedToDelegateTo",
+    "msDS-AllowedToActOnBehalfOfOtherIdentity",
+    "objectSid",
+    "sIDHistory",
+    "adminCount",
+    "memberOf",
+    "objectClass",
 ]
 
 COMPUTER_ATTRS = [
-    "cn", "name", "samAccountName", "dNSHostName",
-    "operatingSystem", "operatingSystemVersion", "operatingSystemServicePack",
-    "userAccountControl", "msDS-AllowedToDelegateTo",
-    "msDS-AllowedToActOnBehalfOfOtherIdentity", "objectClass",
+    "cn",
+    "name",
+    "samAccountName",
+    "dNSHostName",
+    "operatingSystem",
+    "operatingSystemVersion",
+    "operatingSystemServicePack",
+    "userAccountControl",
+    "msDS-AllowedToDelegateTo",
+    "msDS-AllowedToActOnBehalfOfOtherIdentity",
+    "objectClass",
 ]
 
 GROUP_ATTRS = [
-    "cn", "name", "member", "memberOf", "objectClass", "sAMAccountName",
+    "cn",
+    "name",
+    "member",
+    "memberOf",
+    "objectClass",
+    "sAMAccountName",
 ]
 
 # LDAP filter constants – mirrors windapsearch.py
@@ -49,6 +71,7 @@ FILTER_CONSTRAINED = "(&(objectClass=*)(msDS-AllowedToDelegateTo=*))"
 # Resource-based constrained delegation: msDS-AllowedToActOnBehalfOfOtherIdentity present
 FILTER_RBCD = "(&(objectClass=*)(msDS-AllowedToActOnBehalfOfOtherIdentity=*))"
 
+
 # Privileged users via nested membership – Domain Admins
 # LDAP_MATCHING_RULE_IN_CHAIN OID: 1.2.840.113556.1.4.1941
 def filter_privileged_via_chain(priv_group_dn: str) -> str:
@@ -66,8 +89,8 @@ def build_ldapsearch_cmd(
     bind_pass: str | None,
     base_dn: str,
     ldap_filter: str,
-    attrs: List[str] | None = None,
-) -> List[str]:
+    attrs: list[str] | None = None,
+) -> list[str]:
     """Return an ldapsearch command list.
 
     Uses the system ldapsearch binary. Mirrors the behaviour of
@@ -75,10 +98,13 @@ def build_ldapsearch_cmd(
     """
     cmd = [
         "ldapsearch",
-        "-H", f"ldap://{dc_ip}:389",
+        "-H",
+        f"ldap://{dc_ip}:389",
         "-x",
-        "-b", base_dn,
-        "-s", "sub",
+        "-b",
+        base_dn,
+        "-s",
+        "sub",
         "-LLL",
     ]
     if bind_dn:
@@ -97,7 +123,7 @@ def enumerate_query(
     bind_pass: str | None,
     base_dn: str,
     ldap_filter: str,
-    attrs: List[str] | None = None,
+    attrs: list[str] | None = None,
 ) -> str:
     """Execute ldapsearch and return LDIF text.
 
